@@ -1,41 +1,4 @@
-CREATE DATABASE mini_mart;
-
-USE mini_mart;
-
-CREATE TABLE customers (
-    id INT PRIMARY KEY AUTO_INCREMENT,
-    full_name VARCHAR(100) NOT NULL,
-    phone VARCHAR(15) UNIQUE,
-    address VARCHAR(255),
-    customer_type ENUM('Normal', 'VIP') DEFAULT 'Normal'
-);
-
-CREATE TABLE products (
-    id INT PRIMARY KEY AUTO_INCREMENT,
-    product_name VARCHAR(100) NOT NULL,
-    category VARCHAR(50),
-    price DECIMAL(10, 2) CHECK (price > 0),
-    stock INT CHECK (stock >= 0)
-);
-
-CREATE TABLE orders (
-    id INT PRIMARY KEY AUTO_INCREMENT,
-    customer_id INT,
-    order_date DATE,
-    status ENUM('completed', 'cancelled') DEFAULT 'completed',
-    FOREIGN KEY (customer_id) REFERENCES customers (id)
-);
-
-CREATE TABLE order_details (
-    id INT PRIMARY KEY AUTO_INCREMENT,
-    order_id INT,
-    product_id INT,
-    quantity INT CHECK (quantity > 0),
-    total_price DECIMAL(10, 2),
-    FOREIGN KEY (order_id) REFERENCES orders (id),
-    FOREIGN KEY (product_id) REFERENCES products (id)
-);
-
+-- Active: 1776147792947@@127.0.0.1@3306@mini_mart
 CREATE DATABASE mini_mart;
 
 USE mini_mart;
@@ -241,3 +204,42 @@ FROM customers c
     LEFT JOIN orders o ON c.id = o.customer_id
 WHERE
     o.id IS NULL;
+
+-- tổng số tiền thu được từ siêu thị (Chỉ tính các đơn có trạng thái 'completed')
+SELECT SUM(od.total_price) AS total_revenue
+FROM orders o
+    JOIN order_details od ON o.id = od.order_id
+WHERE
+    o.status = 'completed';
+
+-- thống kê
+SELECT
+    category AS category_name,
+    COUNT(*) AS total_products,
+    AVG(price) AS avg_price
+FROM products
+GROUP BY
+    category;
+
+-- khách hàng đã chi tổng cộng trên 500.000đ
+SELECT c.full_name, SUM(od.total_price) AS total_spent
+FROM
+    customers c
+    JOIN orders o ON c.id = o.customer_id
+    JOIN order_details od ON o.id = od.order_id
+WHERE
+    o.status = 'completed'
+GROUP BY
+    c.id,
+    c.full_name
+HAVING
+    SUM(od.total_price) > 500000;
+
+-- những sản phẩm có giá bán cao hơn mức giá bán trung bình của toàn bộ siêu thị
+SELECT *
+FROM products
+WHERE
+    price > (
+        SELECT AVG(price)
+        FROM products
+    );
